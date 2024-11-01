@@ -1,0 +1,8 @@
+target/
+local-data/
+*.iml
+*.ipr
+*.iws
+.idea/
+.bsp
+.DS_Store
