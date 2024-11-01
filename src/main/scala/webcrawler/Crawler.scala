@@ -5,7 +5,7 @@ import cats.syntax.all.*
 import fs2.*
 import fs2.io.toInputStream
 import org.http4s.Method.*
-import org.http4s.Uri
+import org.http4s.{Response, Uri}
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.typelevel.log4cats.Logger
@@ -34,18 +34,22 @@ object Crawler {
         uris.traverse { uri =>
           for {
             _ <- Logger[F].info(s"Getting $uri")
-            result <- client.stream(GET(uri)).flatMap { response =>
-              response.body.through(toInputStream)
-                .map { inputStream =>
-                  val is = new InputSource()
-                  response.charset.foreach(charset => is.setEncoding(charset.nioCharset.name))
-                  is.setByteStream(inputStream)
-                  is
-                }.flatMap(elements).through(findTitle)
-            }.compile.toList
+            result <- client.stream(GET(uri))
+              .flatMap(responseToInputSource)
+              .flatMap(elements)
+              .through(findTitle)
+              .compile.toList
           } yield if result.nonEmpty then Right(result.head) else Left(CrawlerError("NO_TITLE", "No title found"))
         }
 
+
+  def responseToInputSource[F[_]: Async](response: Response[F]): Stream[F, InputSource] =
+    response.body.through(toInputStream).map { inputStream =>
+      val is = new InputSource()
+      response.charset.foreach(charset => is.setEncoding(charset.nioCharset.name))
+      is.setByteStream(inputStream)
+      is
+    }
 
   def findTitle[F[_]]: Pipe[F, HtmlEvent, String] =
     val titlePath = "title" :: "head" :: "html" :: Nil
