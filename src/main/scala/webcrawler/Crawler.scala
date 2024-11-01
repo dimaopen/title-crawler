@@ -5,9 +5,9 @@ import cats.syntax.all.*
 import fs2.*
 import fs2.io.toInputStream
 import org.http4s.Method.*
-import org.http4s.{Response, Uri}
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
+import org.http4s.{Response, Uri}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.xml.sax.InputSource
