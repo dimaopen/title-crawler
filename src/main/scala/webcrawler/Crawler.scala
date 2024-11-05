@@ -15,13 +15,14 @@ import org.xml.sax.InputSource
 import webcrawler.HtmlEvents.*
 import webcrawler.api.CrawlerError
 
+import java.io.IOException
 import scala.xml.SAXParseException
 
 /**
  * @author Dmitry Openkov
  */
 trait Crawler[F[_]]:
-  def gatherTitles(uris: Seq[Uri]): F[Seq[Either[CrawlerError, String]]]
+  def gatherTitles(uris: Seq[Uri]): F[Seq[(Uri, Either[CrawlerError, String])]]
 
 
 object Crawler {
@@ -33,23 +34,25 @@ object Crawler {
 
       import dsl.*
 
-      override def gatherTitles(uris: Seq[Uri]): F[Seq[Either[CrawlerError, String]]] =
+      override def gatherTitles(uris: Seq[Uri]): F[Seq[(Uri, Either[CrawlerError, String])]] =
         uris.traverse { uri =>
           for {
             _ <- Logger[F].info(s"Getting $uri")
-            result <- client.stream(GET(uri))
+            title <- client.stream(GET(uri))
               .flatMap(responseToInputSource)
               .flatMap(htmlEvents)
               .through(findTitle)
               .recover {
                 case e: EmberException => CrawlerError("HTTP_CLIENT_ERROR", e.getMessage)
                 case e: SAXParseException => CrawlerError("BAD_HTML", e.getMessage)
+                case e: IOException => CrawlerError("CONNECTION_ERROR", e.getMessage)
               }
               .compile.toList
-          } yield result match
-            case (title: String) :: tail => Right(title)
-            case (error: CrawlerError) :: tail => Left(error)
-            case Nil => Left(CrawlerError("NO_TITLE", "No title found"))
+            titleResult = title match
+              case (title: String) :: tail => Right(title)
+              case (error: CrawlerError) :: tail => Left(error)
+              case Nil => Left(CrawlerError("NO_TITLE", "No title found"))
+          } yield uri -> titleResult
         }
 
 
@@ -68,7 +71,6 @@ object Crawler {
       val (title, path) = state
       s.pull.uncons1.flatMap {
         case Some((event, tail)) =>
-          print(event)
           event match
             case StartTag(name) =>
               go(tail, (title, name.toLowerCase :: path))

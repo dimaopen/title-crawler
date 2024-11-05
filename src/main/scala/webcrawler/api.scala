@@ -9,7 +9,7 @@ object api {
   case class CrawlerError(code: String, message: String)
 
   type TitleRequest = Seq[Uri]
-  type TitleResponse = Seq[Either[CrawlerError, String]]
+  type TitleResponse = Seq[(Uri, Either[CrawlerError, String])]
 
   
 
