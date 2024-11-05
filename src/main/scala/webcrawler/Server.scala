@@ -1,5 +1,6 @@
 package webcrawler
 
+import cats.Parallel
 import cats.effect.Async
 import com.comcast.ip4s.*
 import fs2.io.net.Network
@@ -11,7 +12,7 @@ import org.http4s.server.middleware.Logger
 
 object Server:
 
-  def run[F[_]: Async: Network]: F[Nothing] = {
+  def run[F[_] : Async : Network : Parallel]: F[Nothing] = {
     for {
       client <- EmberClientBuilder.default[F]
         .withMaxResponseHeaderSize(10 * 1024)
@@ -22,7 +23,7 @@ object Server:
       // With Middlewares in place
       finalHttpApp = Logger.httpApp(true, true)(httpApp)
 
-      _ <- 
+      _ <-
         EmberServerBuilder.default[F]
           .withHost(ipv4"0.0.0.0")
           .withPort(port"8880")

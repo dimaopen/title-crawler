@@ -1,5 +1,6 @@
 package webcrawler
 
+import cats.Parallel
 import cats.effect.{Async, Concurrent, Sync}
 import cats.syntax.all.*
 import fs2.*
@@ -28,14 +29,14 @@ trait Crawler[F[_]]:
 object Crawler {
   implicit def logger[F[_] : Sync]: Logger[F] = Slf4jLogger.getLogger[F]
 
-  def impl[F[_] : Async : Concurrent](client: Client[F]): Crawler[F] =
+  def impl[F[_] : Async : Parallel](client: Client[F]): Crawler[F] =
     new Crawler[F]:
       private val dsl = new Http4sClientDsl[F] {}
 
       import dsl.*
 
       override def gatherTitles(uris: Seq[Uri]): F[Seq[(Uri, Either[CrawlerError, String])]] =
-        uris.traverse { uri =>
+        uris.parTraverse { uri =>
           for {
             _ <- Logger[F].info(s"Getting $uri")
             title <- client.stream(GET(uri))
