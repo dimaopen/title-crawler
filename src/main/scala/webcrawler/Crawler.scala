@@ -7,12 +7,15 @@ import fs2.io.toInputStream
 import org.http4s.Method.*
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
+import org.http4s.ember.core.EmberException
 import org.http4s.{Response, Uri}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.xml.sax.InputSource
 import webcrawler.HtmlEvents.*
 import webcrawler.api.CrawlerError
+
+import scala.xml.SAXParseException
 
 /**
  * @author Dmitry Openkov
@@ -36,14 +39,21 @@ object Crawler {
             _ <- Logger[F].info(s"Getting $uri")
             result <- client.stream(GET(uri))
               .flatMap(responseToInputSource)
-              .flatMap(elements)
+              .flatMap(htmlEvents)
               .through(findTitle)
+              .recover {
+                case e: EmberException => CrawlerError("HTTP_CLIENT_ERROR", e.getMessage)
+                case e: SAXParseException => CrawlerError("BAD_HTML", e.getMessage)
+              }
               .compile.toList
-          } yield if result.nonEmpty then Right(result.head) else Left(CrawlerError("NO_TITLE", "No title found"))
+          } yield result match
+            case (title: String) :: tail => Right(title)
+            case (error: CrawlerError) :: tail => Left(error)
+            case Nil => Left(CrawlerError("NO_TITLE", "No title found"))
         }
 
 
-  def responseToInputSource[F[_]: Async](response: Response[F]): Stream[F, InputSource] =
+  def responseToInputSource[F[_] : Async](response: Response[F]): Stream[F, InputSource] =
     response.body.through(toInputStream).map { inputStream =>
       val is = new InputSource()
       response.charset.foreach(charset => is.setEncoding(charset.nioCharset.name))

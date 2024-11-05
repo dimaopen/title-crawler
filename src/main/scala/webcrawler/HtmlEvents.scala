@@ -26,7 +26,7 @@ object HtmlEvents {
 
   private val saxFactory = new org.ccil.cowan.tagsoup.jaxp.SAXFactoryImpl()
   
-  def elements[F[_]](inputSource: InputSource)(implicit F: Async[F]): Stream[F, HtmlEvent] = {
+  def htmlEvents[F[_]](inputSource: InputSource)(implicit F: Async[F]): Stream[F, HtmlEvent] = {
     for {
       dispatcher <- Stream.resource(Dispatcher.sequential[F])
       queue <- Stream.eval(Queue.unbounded[F, Option[HtmlEvent]])

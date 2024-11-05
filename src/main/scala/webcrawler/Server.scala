@@ -13,7 +13,9 @@ object Server:
 
   def run[F[_]: Async: Network]: F[Nothing] = {
     for {
-      client <- EmberClientBuilder.default[F].build
+      client <- EmberClientBuilder.default[F]
+        .withMaxResponseHeaderSize(10 * 1024)
+        .build
       crawler = Crawler.impl[F](FollowRedirect(maxRedirects = 5)(client))
       httpApp = Routes.mainApiRoutes[F](crawler).orNotFound
 
