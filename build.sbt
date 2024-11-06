@@ -34,3 +34,4 @@ lazy val root = (project in file("."))
 import org.typelevel.scalacoptions.ScalacOptions
 
 Compile / tpolecatExcludeOptions += ScalacOptions.warnUnusedImports
+Compile/mainClass := Some("webcrawler.Main")

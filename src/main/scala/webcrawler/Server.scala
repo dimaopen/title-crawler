@@ -10,6 +10,8 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
 import org.http4s.server.middleware.Logger
 
+import scala.concurrent.duration.DurationInt
+
 object Server:
 
   def run[F[_] : Async : Network : Parallel]: F[Nothing] = {
@@ -27,6 +29,7 @@ object Server:
         EmberServerBuilder.default[F]
           .withHost(ipv4"0.0.0.0")
           .withPort(port"8880")
+          .withIdleTimeout(10.minutes)
           .withHttpApp(finalHttpApp)
           .build
     } yield ()
