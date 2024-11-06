@@ -4,6 +4,7 @@ import cats.effect.Concurrent
 import cats.syntax.all.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
+import org.http4s.server.middleware.ErrorHandling
 import org.http4s.circe.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{EntityDecoder, EntityEncoder, HttpRoutes, Uri}
@@ -30,11 +31,12 @@ object Routes:
   def mainApiRoutes[F[_] : Concurrent](crawler: Crawler[F]): HttpRoutes[F] =
     val dsl = new Http4sDsl[F] {}
     import dsl.*
-    HttpRoutes.of[F] {
+    val service = HttpRoutes.of[F] {
       case req@POST -> Root / "api" / "v1" / "tasks" =>
         for {
           request <- req.as[TitleRequest]
           result <- crawler.gatherTitles(request)
           resp <- Ok(result)
         } yield resp
-    }
+      }
+    ErrorHandling.httpRoutes(service)
